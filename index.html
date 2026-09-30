@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로또 번호 추천기</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --card: #ffffff;
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --accent: #e8453c;
+      --line: #e5e1d8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16161a;
+        --card: #222228;
+        --ink: #f2f2f2;
+        --muted: #9a9aa2;
+        --line: #33333b;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 48px 16px;
+    }
+    main { width: 100%; max-width: 560px; }
+    header { text-align: center; margin-bottom: 32px; }
+    h1 { font-size: 2rem; letter-spacing: -0.02em; }
+    header p { color: var(--muted); margin-top: 8px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 28px 20px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    select {
+      font: inherit;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+    }
+    button {
+      font: inherit;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: transform .1s, opacity .2s;
+    }
+    button:hover { opacity: .9; }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .5; cursor: default; }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      font-size: .9rem;
+      padding: 8px 14px;
+      font-weight: 500;
+    }
+
+    .sets { display: flex; flex-direction: column; gap: 14px; }
+    .set {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .set-label {
+      width: 22px;
+      font-weight: 700;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .ball {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.35);
+      box-shadow: inset -4px -5px 8px rgba(0,0,0,.2), inset 3px 4px 6px rgba(255,255,255,.35);
+      opacity: 0;
+      transform: scale(.3) translateY(-10px);
+      animation: pop .35s forwards cubic-bezier(.3,1.6,.5,1);
+    }
+    @keyframes pop { to { opacity: 1; transform: scale(1) translateY(0); } }
+    .plus { color: var(--muted); font-weight: 700; margin: 0 2px; }
+
+    /* 동행복권 공 색상 기준 */
+    .c1 { background: #fbc400; }  /* 1~10 */
+    .c2 { background: #69c8f2; }  /* 11~20 */
+    .c3 { background: #ff7272; }  /* 21~30 */
+    .c4 { background: #aaaaaa; }  /* 31~40 */
+    .c5 { background: #b0d840; }  /* 41~45 */
+
+    .placeholder { color: var(--muted); padding: 20px 0; }
+
+    .history { margin-top: 28px; }
+    .history-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .history-head h2 { font-size: 1.05rem; }
+    .history ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .history li {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex; justify-content: space-between; gap: 10px;
+      font-variant-numeric: tabular-nums;
+      font-size: .95rem;
+    }
+    .history li time { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+    .empty { color: var(--muted); font-size: .9rem; text-align: center; }
+
+    footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 32px; }
+
+    @media (max-width: 420px) {
+      .ball { width: 38px; height: 38px; font-size: .95rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>🍀 로또 번호 추천기</h1>
+      <p>버튼을 누르면 1~45 중 6개 번호와 보너스 번호를 뽑아드려요</p>
+    </header>
+
+    <section class="card">
+      <div class="controls">
+        <select id="count" aria-label="게임 수">
+          <option value="1">1게임</option>
+          <option value="3">3게임</option>
+          <option value="5" selected>5게임</option>
+        </select>
+        <button id="drawBtn">번호 추천받기</button>
+      </div>
+      <div id="sets" class="sets">
+        <p class="placeholder">아직 뽑은 번호가 없어요</p>
+      </div>
+    </section>
+
+    <section class="history">
+      <div class="history-head">
+        <h2>최근 추천 기록</h2>
+        <button id="clearBtn" class="ghost">기록 지우기</button>
+      </div>
+      <ul id="historyList"><li class="empty">기록이 없습니다</li></ul>
+    </section>
+
+    <footer>재미로만 즐겨주세요. 당첨을 보장하지 않습니다.</footer>
+  </main>
+
+  <script>
+    const drawBtn = document.getElementById("drawBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const countSel = document.getElementById("count");
+    const setsEl = document.getElementById("sets");
+    const historyList = document.getElementById("historyList");
+    const LABELS = "ABCDE";
+    let history = [];
+
+    // 암호학적 난수로 1~45 중 중복 없이 7개 (6개 + 보너스)
+    function randomInt(max) {
+      const buf = new Uint32Array(1);
+      const limit = Math.floor(0xffffffff / max) * max;
+      do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+      return buf[0] % max;
+    }
+    function drawNumbers() {
+      const pool = Array.from({ length: 45 }, (_, i) => i + 1);
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = randomInt(i + 1);
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return { main: pool.slice(0, 6).sort((a, b) => a - b), bonus: pool[6] };
+    }
+
+    function colorClass(n) {
+      if (n <= 10) return "c1";
+      if (n <= 20) return "c2";
+      if (n <= 30) return "c3";
+      if (n <= 40) return "c4";
+      return "c5";
+    }
+
+    function makeBall(n, delay) {
+      const b = document.createElement("span");
+      b.className = "ball " + colorClass(n);
+      b.textContent = n;
+      b.style.animationDelay = delay + "ms";
+      return b;
+    }
+
+    function render(results) {
+      setsEl.innerHTML = "";
+      let delay = 0;
+      results.forEach((r, idx) => {
+        const row = document.createElement("div");
+        row.className = "set";
+        const label = document.createElement("span");
+        label.className = "set-label";
+        label.textContent = LABELS[idx];
+        row.appendChild(label);
+        r.main.forEach(n => { row.appendChild(makeBall(n, delay)); delay += 70; });
+        const plus = document.createElement("span");
+        plus.className = "plus";
+        plus.textContent = "+";
+        row.appendChild(plus);
+        row.appendChild(makeBall(r.bonus, delay));
+        delay += 70;
+        setsEl.appendChild(row);
+      });
+      return delay;
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = "";
+      if (!history.length) {
+        historyList.innerHTML = '<li class="empty">기록이 없습니다</li>';
+        return;
+      }
+      history.slice(0, 10).forEach(h => {
+        const li = document.createElement("li");
+        const nums = document.createElement("span");
+        nums.textContent = h.main.join(", ") + " + " + h.bonus;
+        const t = document.createElement("time");
+        t.textContent = h.time;
+        li.append(nums, t);
+        historyList.appendChild(li);
+      });
+    }
+
+    drawBtn.addEventListener("click", () => {
+      const count = Number(countSel.value);
+      const results = Array.from({ length: count }, drawNumbers);
+      drawBtn.disabled = true;
+      const total = render(results);
+      setTimeout(() => { drawBtn.disabled = false; }, total + 300);
+
+      const time = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      results.slice().reverse().forEach(r => history.unshift({ ...r, time }));
+      history = history.slice(0, 10);
+      renderHistory();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      history = [];
+      renderHistory();
+    });
+  </script>
+</body>
+</html>
